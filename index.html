@@ -720,21 +720,60 @@ function setSyncState(state,label){
 }
 async function loadDrive(){
   setSyncState('spin','Loading…');
-  const items=await driveGet(CFG.itemsId);
-  const cats=await driveGet(CFG.catsId);
-  if(Array.isArray(items))DB.items=items;
-  else{const lo=lg('cv_items');if(lo)DB.items=lo;}
-  if(cats&&typeof cats==='object')DB.categories=cats;
-  setSyncState('ok','Synced');
+  try{
+    const items=await driveGet(CFG.itemsId);
+    const cats=await driveGet(CFG.catsId);
+    // Load items — fallback to local storage
+    if(Array.isArray(items)&&items.length>0){
+      DB.items=items;
+      ls('cv_items',items); // update local cache
+    } else {
+      const lo=lg('cv_items');
+      if(lo&&lo.length>0) DB.items=lo;
+    }
+    // Load categories — rebuild from items if Drive returns empty
+    if(cats&&typeof cats==='object'&&Object.keys(cats).length>0){
+      DB.categories=cats;
+    } else {
+      // Rebuild from items — this is the fix for the 0 categories bug
+      rebuildCats();
+      // Save the rebuilt categories back to Drive
+      if(DB.items.length>0) drivePut(CFG.catsId, DB.categories);
+    }
+    setSyncState('ok','Synced');
+  }catch(e){
+    // Full fallback to local storage
+    const lo=lg('cv_items');
+    if(lo&&lo.length>0){ DB.items=lo; rebuildCats(); }
+    setSyncState('err','Using local data');
+  }
 }
 async function saveDrive(){
   setSyncState('spin','Saving…');
+  // Always save locally first so data is never lost
+  ls('cv_items',DB.items);
   try{
-    await drivePut(CFG.itemsId,DB.items);
-    await drivePut(CFG.catsId,DB.categories);
-    await drivePut(CFG.metaId,{version:'1.0',lastSync:new Date().toISOString(),totalItems:DB.items.length,totalCategories:Object.keys(DB.categories).length});
-    ls('cv_items',DB.items); setSyncState('ok','Synced'); toast('Saved to Drive ✓');
-  }catch(e){ls('cv_items',DB.items);setSyncState('err','Drive error — saved locally');toast('Saved locally (Drive error)');}
+    const [ok1,ok2]=await Promise.all([
+      drivePut(CFG.itemsId,DB.items),
+      drivePut(CFG.catsId,DB.categories),
+    ]);
+    await drivePut(CFG.metaId,{
+      version:'1.0',
+      lastSync:new Date().toISOString(),
+      totalItems:DB.items.length,
+      totalCategories:Object.keys(DB.categories).length
+    });
+    if(ok1&&ok2){
+      setSyncState('ok','Synced');
+      toast('Saved to Drive ✓');
+    } else {
+      setSyncState('err','Partial save — tap Synced to refresh token');
+      toast('Drive error — tap the Synced button to update token');
+    }
+  }catch(e){
+    setSyncState('err','Saved locally only');
+    toast('Drive error — data saved locally');
+  }
 }
 async function syncNow(){await loadDrive();renderAll();}
 
@@ -749,7 +788,8 @@ function renderStats(){
   document.getElementById('s-flags').textContent=DB.items.filter(i=>i.flagged).length;
 }
 function renderFilterBar(){
-  const cats=Object.keys(DB.categories);
+  // Build category list from actual items — not from DB.categories which may be stale
+  const cats=[...new Set(DB.items.map(i=>i.category).filter(Boolean))].sort();
   const bar=document.getElementById('filter-bar');
   bar.innerHTML=['All',...cats].map(c=>
     `<button class="filter-chip${c==='All'&&!currentFilter?' on':''}" onclick="applyFilter('${esc(c)}')">${esc(c)}</button>`
@@ -1131,12 +1171,11 @@ function suggestForItem(item){
 function rebuildCats(){
   const cats={};
   DB.items.forEach(item=>{
-    if(!item.category)return;
+    if(!item.category||item.category==='Other'||item.category==='')return;
     if(!cats[item.category])cats[item.category]=new Set();
     if(item.subcategory)cats[item.category].add(item.subcategory);
   });
-  Object.keys(cats).forEach(c=>{cats[c]=Array.from(cats[c]);});
-  // preserve empty top-cats defined by user
+  Object.keys(cats).forEach(c=>{cats[c]=Array.from(cats[c]).sort();});
   Object.keys(DB.categories).forEach(c=>{if(!cats[c])cats[c]=DB.categories[c]||[];});
   DB.categories=cats;
 }
