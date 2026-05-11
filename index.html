@@ -355,11 +355,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
           <div class="qab-title">📂 Uncategorised items</div>
           <div class="qab-count" id="qbanner-count"></div>
         </div>
-        <div class="qab-desc">The app will open each tweet, read the full content, and auto-categorise. No manual work needed.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-qassign" onclick="refetchUncategorised()">🔄 Auto-categorise tweets →</button>
-          <button style="background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:7px;padding:8px 14px;font-family:var(--fb);font-size:13px;cursor:pointer" onclick="startBulkAssign()">Manual assign</button>
-        </div>
+        <div class="qab-desc">Some items need a category. Tap an item to assign one, or use Manual assign for quick batch categorisation.</div>
+        <button class="btn-qassign" onclick="startBulkAssign()">Manual assign →</button>
       </div>
       <div id="res-bar" class="res-bar" style="display:none">
         <span id="res-txt"></span>
@@ -413,21 +410,50 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
           </div>
           <div class="prog" id="prog-chrome"><div class="prog-bar"><div class="prog-fill" id="pf-chrome"></div></div><div class="prog-txt" id="pt-chrome"></div></div>
         </div>
-        <div class="ic">
+        <!-- Twitter Archive -->
+        <div class="ic" style="border-color:rgba(29,161,242,0.3)">
           <div class="ic-hd">
             <div class="ic-ico src-tw">𝕏</div>
-            <div class="ic-title">Twitter / X Bookmarks</div>
-            <div class="ic-badge">Export file</div>
+            <div class="ic-title">Twitter Archive</div>
+            <div class="ic-badge" style="background:rgba(29,161,242,0.15);color:#4da6e8;border-color:rgba(29,161,242,0.3)">Best</div>
           </div>
-          <div class="ic-desc">Use the free "Export Twitter Bookmarks" Chrome extension — exports all bookmarks to JSON without needing Twitter Blue.</div>
-          <div class="ic-steps">1. Chrome Web Store → install "Export Twitter Bookmarks"<br>2. Go to twitter.com/i/bookmarks<br>3. Click extension icon → Export JSON → upload below</div>
+          <div class="ic-desc">Upload your Twitter data archive — contains full tweet text, author, date for every bookmark. No fetching needed, no rate limits.</div>
+          <div class="ic-steps">1. Twitter → Settings → Your Account → Download archive<br>2. Wait for email (24-48 hrs) → download ZIP<br>3. Open ZIP → find <strong>data/bookmarks.js</strong><br>4. Upload that file below</div>
           <div class="dz" id="dz-twitter">
-            <input type="file" accept=".json,.csv,.txt" onchange="handleFile('twitter',this)">
+            <input type="file" accept=".js,.json,.txt" onchange="handleFile('twitter',this)">
             <div class="dz-ico">🐦</div>
-            <div class="dz-t">Drop Twitter export here</div>
-            <div class="dz-s">.json, .csv or .txt</div>
+            <div class="dz-t">Drop bookmarks.js here</div>
+            <div class="dz-s">from Twitter data archive ZIP</div>
           </div>
           <div class="prog" id="prog-twitter"><div class="prog-bar"><div class="prog-fill" id="pf-twitter"></div></div><div class="prog-txt" id="pt-twitter"></div></div>
+        </div>
+
+        <!-- Screenshot / Image -->
+        <div class="ic" style="border-color:rgba(180,158,245,0.3)">
+          <div class="ic-hd">
+            <div class="ic-ico" style="background:rgba(180,158,245,0.12);color:#b49ef5">📷</div>
+            <div class="ic-title">Save Screenshot</div>
+            <div class="ic-badge" style="background:rgba(180,158,245,0.1);color:#b49ef5;border-color:rgba(180,158,245,0.3)">Image</div>
+          </div>
+          <div class="ic-desc">Save a screenshot of a tweet, chart, or research — stored in your Google Drive with your caption as the searchable title.</div>
+          <div class="dz" id="dz-img" style="margin-bottom:10px">
+            <input type="file" accept="image/*" onchange="previewImage(this)">
+            <div id="img-preview-wrap">
+              <div class="dz-ico">🖼️</div>
+              <div class="dz-t">Tap to select screenshot</div>
+              <div class="dz-s">jpg, png, webp</div>
+            </div>
+          </div>
+          <div id="img-form" style="display:none">
+            <label class="fl" style="margin-bottom:5px">Caption / what is this about?</label>
+            <input class="fi" id="img-caption" placeholder="e.g. HDFC capex cycle breakdown, fraud tweet by @user..." style="margin-bottom:10px">
+            <label class="fl" style="margin-bottom:5px">Category</label>
+            <div class="cpick-grid" id="img-cat-grid" style="margin-bottom:10px"></div>
+            <label class="fl" style="margin-bottom:5px">Ticker / stock (optional)</label>
+            <input class="fi" id="img-ticker" placeholder="e.g. HDFC, RELIANCE" style="margin-bottom:10px;text-transform:uppercase">
+            <button class="btn-imp" onclick="saveScreenshot()">Save to Drive →</button>
+          </div>
+          <div class="prog" id="prog-img"><div class="prog-bar"><div class="prog-fill" id="pf-img"></div></div><div class="prog-txt" id="pt-img"></div></div>
         </div>
         <div class="ic">
           <div class="ic-hd">
@@ -692,8 +718,8 @@ function showResBar(txt){
   document.getElementById('res-txt').textContent=txt;
 }
 
-const SRC_ICO={twitter:'𝕏',chrome:'C',notepad:'N',manual:'+'};
-const SRC_CLS={twitter:'src-tw',chrome:'src-ch',notepad:'src-np',manual:'src-mn'};
+const SRC_ICO={twitter:'𝕏',chrome:'C',notepad:'N',manual:'+',image:'📷'};
+const SRC_CLS={twitter:'src-tw',chrome:'src-ch',notepad:'src-np',manual:'src-mn',image:'src-mn'};
 const CAT_COL=['#c9a84c','#5a9e8e','#6a8fb0','#9a7ec8','#c07060','#6a9e72','#b08040','#5a8eae'];
 
 function itemCard(item){
@@ -705,6 +731,9 @@ function itemCard(item){
     ...(item.tickers||[]).map(t=>`<span class="tag t-tick">${esc(t)}</span>`),
     item.flagged?`<span class="tag t-flag">🚩 Flagged</span>`:'',
   ].filter(Boolean).join('');
+  const imgThumb = item.imageB64
+    ? `<img src="${item.imageB64}" style="width:100%;border-radius:6px;margin-top:7px;max-height:140px;object-fit:cover">`
+    : '';
   return `<div class="item${item.flagged?' flagged':''}${unc?' uncategorised':''}" data-id="${item.id}" onclick="openItem('${item.id}')">
     <div class="item-hd">
       <div class="isrc ${SRC_CLS[src]||'src-mn'}">${SRC_ICO[src]||'+'}</div>
@@ -716,6 +745,7 @@ function itemCard(item){
         </div>
       </div>
     </div>
+    ${imgThumb}
     <div class="tags">${tags}</div>
   </div>`;
 }
@@ -809,33 +839,6 @@ function doSearch(){
 }
 
 // ══ IMPORT ═════════════════════════════════════════════════
-// ══ TWEET FETCHER ════════════════════════════════════════════
-// Uses Twitter's public oEmbed API — no login needed for public tweets
-async function fetchTweetContent(url){
-  try{
-    // oEmbed returns full tweet text + author
-    const oembed = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true`;
-    const r = await fetch(oembed);
-    if(!r.ok) return null;
-    const data = await r.json();
-    // data.html contains the tweet text wrapped in HTML — extract plain text
-    const tmp = document.createElement('div');
-    tmp.innerHTML = data.html || '';
-    // Remove the blockquote wrapper, get inner text
-    const bq = tmp.querySelector('blockquote p');
-    const text = bq ? bq.innerText || bq.textContent : tmp.textContent;
-    return {
-      text: text.replace(/\s+/g,' ').trim(),
-      author: data.author_name || '',
-      authorUrl: data.author_url || '',
-    };
-  }catch(e){ return null; }
-}
-
-function isTweetUrl(url){
-  return url && (url.includes('twitter.com/') || url.includes('x.com/')) && url.includes('/status/');
-}
-
 async function handleFile(type,input){
   const files=Array.from(input.files); if(!files.length)return;
   let raw=[];
@@ -843,66 +846,18 @@ async function handleFile(type,input){
   showProg(type,20,`Parsed ${raw.length} items…`);
   const newItems=raw.filter(r=>!DB.items.some(e=>e.url&&e.url===r.url));
   if(!newItems.length){toast('No new items (all already saved)');showProg(type,100,'Already saved');return;}
-
-  // First pass — keyword guess on what we have
   newItems.forEach(item=>guessCategory(item));
-
-  // Second pass — fetch tweet content for Twitter URLs that are uncategorised or have no snapshot
-  const tweetItems = newItems.filter(i=>isTweetUrl(i.url) && (!i.snapshot || !i.category));
-  if(tweetItems.length > 0){
-    showProg(type,35,`Fetching ${tweetItems.length} tweet contents…`);
-    showImpAI(true,`Reading ${tweetItems.length} tweets to categorise…`);
-    let done=0;
-    // Fetch in batches of 5 to avoid rate limiting
-    for(let i=0;i<tweetItems.length;i+=5){
-      const batch=tweetItems.slice(i,i+5);
-      await Promise.all(batch.map(async item=>{
-        const content = await fetchTweetContent(item.url);
-        if(content){
-          if(!item.snapshot) item.snapshot = content.text;
-          if(!item.author) item.author = content.author;
-          if(!item.title || item.title===item.url) item.title = content.text.slice(0,120);
-          // Re-guess category now that we have full text
-          guessCategory(item);
-        }
-        done++;
-        showProg(type, 35+Math.round(done/tweetItems.length*35), `Fetched ${done}/${tweetItems.length} tweets…`);
-      }));
-      // Small delay between batches to be respectful
-      if(i+5 < tweetItems.length) await new Promise(r=>setTimeout(r,500));
-    }
-    showImpAI(false);
-  }
-
   DB.items=[...newItems,...DB.items];
   rebuildCats(); showProg(type,80,'Saving to Drive…');
   await saveDrive(); showProg(type,100,`✓ ${newItems.length} items added`);
   renderAll(); toast(`${newItems.length} items added!`);
   setTimeout(()=>document.getElementById('prog-'+type).style.display='none',3000);
 }
-
 async function handlePaste(){
   const text=v('paste-inp').trim(); if(!text)return;
   const raw=parseText(text);
   const newItems=raw.filter(r=>!DB.items.some(e=>e.url&&e.url===r.url));
   newItems.forEach(guessCategory);
-
-  // Fetch tweet content for any Twitter URLs pasted
-  const tweetItems=newItems.filter(i=>isTweetUrl(i.url));
-  if(tweetItems.length>0){
-    showImpAI(true,`Reading ${tweetItems.length} tweet${tweetItems.length>1?'s':''}…`);
-    await Promise.all(tweetItems.map(async item=>{
-      const content=await fetchTweetContent(item.url);
-      if(content){
-        item.snapshot=content.text;
-        item.author=content.author;
-        if(!item.title||item.title===item.url) item.title=content.text.slice(0,120);
-        guessCategory(item);
-      }
-    }));
-    showImpAI(false);
-  }
-
   DB.items=[...newItems,...DB.items]; rebuildCats();
   await saveDrive(); renderAll(); document.getElementById('paste-inp').value='';
   toast(`${newItems.length} items added!`);
@@ -917,16 +872,173 @@ function parseChrome(html){
   })).filter(i=>i.url.startsWith('http'));
 }
 function parseTwitter(text){
+  // ── Twitter data archive format (bookmarks.js) ──────────────
+  // File starts with: window.YTD.bookmarks.part0 = [ ... ]
+  if(text.includes('window.YTD.bookmarks') || text.includes('YTD.bookmarks')){
+    return parseTwitterArchive(text);
+  }
+  // ── JSON export from extension ───────────────────────────────
   try{
     const data=JSON.parse(text);
     const arr=Array.isArray(data)?data:(data.bookmarks||data.data||[]);
     return arr.map(t=>({
-      id:uid(),url:t.url||t.tweet_url||'',title:t.text||t.full_text||t.content||t.url||'',
-      source:'twitter',author:t.author||t.user||t.screen_name||t.username||'',
+      id:uid(),url:t.url||t.tweet_url||'',
+      title:t.text||t.full_text||t.content||t.url||'',
+      source:'twitter',
+      author:t.author||t.user||t.screen_name||t.username||'',
       date:t.created_at||t.date||today(),
-      snapshot:t.text||t.full_text||'',category:'',subcategory:'',tickers:[],flagged:false,note:''
+      snapshot:t.text||t.full_text||'',
+      category:'',subcategory:'',tickers:[],flagged:false,note:''
     })).filter(i=>i.title);
   }catch{return parseText(text).map(i=>({...i,source:'twitter'}));}
+}
+
+function parseTwitterArchive(text){
+  // Strip the JS variable assignment to get pure JSON
+  let json = text.replace(/^[^[]*/, '').replace(/[^}]*$/, '');
+  // Handle the window.YTD.bookmarks.part0 = [...] format
+  try {
+    // Try extracting the array directly
+    const match = text.match(/=\s*(\[[\s\S]*\])/);
+    if(match) json = match[1];
+    const data = JSON.parse(json);
+    const items = [];
+    for(const entry of data){
+      // Archive format: {tweet: {id_str, full_text, user: {name, screen_name}, created_at}}
+      const tw = entry.tweet || entry;
+      const user = tw.user || {};
+      const fullText = tw.full_text || tw.text || '';
+      const tweetId = tw.id_str || tw.id || '';
+      const screenName = user.screen_name || tw.screen_name || '';
+      const url = tweetId && screenName
+        ? `https://twitter.com/${screenName}/status/${tweetId}`
+        : (tw.url || '');
+      if(!fullText && !url) continue;
+      // Parse date
+      let date = today();
+      if(tw.created_at){
+        try{ date = new Date(tw.created_at).toISOString().split('T')[0]; }catch{}
+      }
+      items.push({
+        id:uid(), url, title: fullText.slice(0,150) || url,
+        source:'twitter',
+        author: user.name || screenName || '',
+        date, snapshot: fullText,
+        category:'', subcategory:'', tickers:[], flagged:false, note:''
+      });
+    }
+    return items;
+  } catch(e){
+    console.warn('Archive parse failed:', e);
+    return [];
+  }
+}
+
+// ══ SCREENSHOT / IMAGE UPLOAD ══════════════════════════════════
+let selectedImageFile = null;
+let selectedImageB64 = null;
+
+function previewImage(input){
+  const file = input.files[0];
+  if(!file) return;
+  selectedImageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    selectedImageB64 = e.target.result; // full data URL
+    const wrap = document.getElementById('img-preview-wrap');
+    wrap.innerHTML = `<img src="${selectedImageB64}" style="width:100%;border-radius:6px;max-height:180px;object-fit:cover">
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--fm)">${file.name} · ${(file.size/1024).toFixed(0)}KB</div>`;
+    document.getElementById('img-form').style.display = 'block';
+    // Build category grid
+    const allCats = [...new Set([...TOP_CATS, ...Object.keys(DB.categories)])];
+    document.getElementById('img-cat-grid').innerHTML = allCats.map(c=>
+      `<button class="cpick-btn" onclick="selectImgCat(this,'${esc(c)}')">${esc(c)}</button>`
+    ).join('');
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectImgCat(btn, cat){
+  document.querySelectorAll('#img-cat-grid .cpick-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function saveScreenshot(){
+  if(!selectedImageB64){ toast('Please select an image first'); return; }
+  const caption = document.getElementById('img-caption').value.trim();
+  if(!caption){ toast('Please add a caption describing this screenshot'); return; }
+  const selCat = document.querySelector('#img-cat-grid .cpick-btn.selected')?.textContent || 'Other';
+  const ticker = document.getElementById('img-ticker').value.trim().toUpperCase();
+
+  showProg('img', 20, 'Uploading image to Google Drive…');
+
+  try{
+    // Upload image to Drive
+    let driveImageId = null;
+    let driveImageUrl = '';
+    if(CFG.gtoken){
+      // Convert data URL to base64
+      const b64 = selectedImageB64.split(',')[1];
+      const mimeType = selectedImageFile.type || 'image/jpeg';
+      const fname = `screenshot_${Date.now()}.${mimeType.split('/')[1]||'jpg'}`;
+      showProg('img', 40, 'Saving to Drive…');
+      const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`, {
+        method:'POST',
+        headers:{Authorization:`Bearer ${CFG.gtoken}`},
+        body: (() => {
+          const meta = JSON.stringify({name: fname});
+          const boundary = 'contentvault_boundary';
+          const body = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64}\r\n--${boundary}--`;
+          return new Blob([body], {type:`multipart/related; boundary=${boundary}`});
+        })()
+      });
+      if(r.ok){
+        const d = await r.json();
+        driveImageId = d.id;
+        driveImageUrl = `https://drive.google.com/file/d/${d.id}/view`;
+      }
+    }
+
+    showProg('img', 70, 'Saving item…');
+
+    // Save as library item
+    const item = {
+      id: uid(),
+      url: driveImageUrl || '',
+      title: caption,
+      source: 'image',
+      date: today(),
+      snapshot: caption,
+      author: '',
+      category: selCat,
+      subcategory: '',
+      tickers: ticker ? [ticker] : [],
+      flagged: false,
+      note: '',
+      imageB64: selectedImageB64, // store thumbnail locally
+      driveImageId: driveImageId || '',
+    };
+
+    DB.items = [item, ...DB.items];
+    rebuildCats();
+    showProg('img', 90, 'Saving to Drive…');
+    await saveDrive();
+    showProg('img', 100, '✓ Screenshot saved!');
+    renderAll();
+    toast('Screenshot saved ✓');
+
+    // Reset form
+    selectedImageFile = null; selectedImageB64 = null;
+    document.getElementById('img-preview-wrap').innerHTML = `<div class="dz-ico">🖼️</div><div class="dz-t">Tap to select screenshot</div><div class="dz-s">jpg, png, webp</div>`;
+    document.getElementById('img-form').style.display = 'none';
+    document.getElementById('img-caption').value = '';
+    document.getElementById('img-ticker').value = '';
+    setTimeout(()=>document.getElementById('prog-img').style.display='none', 3000);
+
+  } catch(e){
+    showProg('img', 0, 'Error saving image');
+    toast('Error: ' + e.message);
+  }
 }
 function parseText(text){
   return text.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>({
