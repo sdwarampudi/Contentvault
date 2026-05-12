@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="ContentVault">
 <meta name="theme-color" content="#0d0d0d">
 <title>ContentVault</title>
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -275,11 +276,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <h3>Your Google Drive File IDs</h3>
     <p>These are pre-filled from your ContentVault folder. Just add a Google OAuth token to connect.</p>
     <label class="fl">items.json File ID</label>
-    <input class="fi" id="a-items" value="1nL4TyP9mLD4OUGq600Co9fLUftRwFnrY">
+    <input class="fi" id="a-items" value="19aaIpRvDzuJ5IL1-BdFwG_RWt9tjKm9b">
     <label class="fl">categories.json File ID</label>
-    <input class="fi" id="a-cats" value="1LDQdzz3vC0mgmAHaU1kO_2U5-bVyfa3Z">
+    <input class="fi" id="a-cats" value="1WvRKT4DRIviRIE8wpcEMe79lVziQA5Yg">
     <label class="fl">meta.json File ID</label>
-    <input class="fi" id="a-meta" value="1lc56aE173UOoUfwHLGMrdwzMyVNcJ5yt">
+    <input class="fi" id="a-meta" value="1BIgOD9Gme3nbINOs0H1JJu4KT1Xqw7sg">
     <label class="fl">Google OAuth Access Token</label>
     <input class="fi" id="a-gt" type="password" placeholder="ya29... get from OAuth Playground">
     <label class="fl">Anthropic API Key (optional — for AI search)</label>
@@ -290,6 +291,32 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     Get OAuth token (free): <a href="https://developers.google.com/oauthplayground" target="_blank">OAuth Playground</a> → Drive API v3 → drive.file scope<br>
     API key is optional. All categorisation works manually without it.
   </p>
+</div>
+
+<!-- ══ SHARE RECEIVE SHEET ══ -->
+<div class="overlay" id="share-overlay" style="z-index:400"></div>
+<div class="sheet" id="share-sheet" style="z-index:401;max-height:85vh">
+  <div class="sheet-handle"></div>
+  <div class="sbody">
+    <div style="font-family:var(--fh);font-size:18px;font-weight:700;margin-bottom:4px;color:var(--gold2)">Save to ContentVault</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Shared from Twitter/X</div>
+
+    <!-- Preview -->
+    <div id="share-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2);font-family:var(--fm);word-break:break-all;line-height:1.5"></div>
+
+    <!-- Quick category — large tap targets, 2 per row -->
+    <div style="font-size:10px;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;font-family:var(--fm);margin-bottom:8px">Category — tap to save instantly</div>
+    <div id="share-cat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px"></div>
+
+    <!-- Optional note -->
+    <input class="fi" id="share-note" placeholder="Quick note (optional) — e.g. HDFC breakout, fraud alert…" style="margin-bottom:12px">
+
+    <!-- Actions -->
+    <div style="display:flex;gap:8px">
+      <button onclick="saveShared()" style="flex:2;background:var(--gold);color:#0d0d0d;border:none;border-radius:8px;padding:12px;font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer">Save →</button>
+      <button onclick="closeShareSheet()" style="flex:1;background:transparent;border:1px solid var(--border2);color:var(--text3);border-radius:8px;padding:12px;font-family:var(--fb);font-size:13px;cursor:pointer">Skip</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══ TOKEN UPDATE MODAL ══ -->
@@ -338,6 +365,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <button class="nb" onclick="goTab('import',this)">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
       Import
+    </button>
+    <button class="nb" onclick="goTab('settings',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
     </button>
   </div>
   <div class="content">
@@ -394,8 +425,44 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div class="items" id="author-items"></div>
     </div>
 
-    <!-- IMPORT -->
-    <div class="panel" id="tab-import">
+    <!-- SETTINGS -->
+    <div class="panel" id="tab-settings">
+      <div class="sec-hd"><div class="sec-title">Settings</div></div>
+
+      <!-- Token -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Google OAuth Token</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5">Token expires every hour. Get a fresh one from <a href="https://developers.google.com/oauthplayground" target="_blank" style="color:var(--gold)">OAuth Playground</a> → Drive API v3 → drive.file scope.</div>
+        <input class="fi" id="settings-token" type="password" placeholder="ya29... paste new token here" style="margin-bottom:8px">
+        <button onclick="applySettingsToken()" style="width:100%;background:var(--gold);color:#0d0d0d;border:none;border-radius:8px;padding:10px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">Update Token & Sync</button>
+      </div>
+
+      <!-- Drive File IDs -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Google Drive File IDs</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">These point to your ContentVault files in Drive. Only change if you moved them.</div>
+        <label class="fl">items.json</label>
+        <input class="fi" id="settings-items-id" style="font-size:11px;margin-bottom:8px">
+        <label class="fl">categories.json</label>
+        <input class="fi" id="settings-cats-id" style="font-size:11px;margin-bottom:8px">
+        <label class="fl">meta.json</label>
+        <input class="fi" id="settings-meta-id" style="font-size:11px;margin-bottom:8px">
+        <button onclick="applySettingsIds()" style="width:100%;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;padding:10px;font-family:var(--fb);font-size:13px;cursor:pointer">Save File IDs</button>
+      </div>
+
+      <!-- Danger zone -->
+      <div style="background:rgba(192,96,90,0.06);border:1px solid rgba(192,96,90,0.2);border-radius:var(--r);padding:14px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:4px">Danger Zone</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.5">Clear all local data and Drive files. Use this before a fresh reimport. Cannot be undone.</div>
+        <button onclick="clearAllData()" style="width:100%;background:var(--red);color:#fff;border:none;border-radius:8px;padding:10px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">⚠ Clear All Data</button>
+      </div>
+
+      <!-- Stats -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">Library Stats</div>
+        <div style="font-size:12px;color:var(--text3);font-family:var(--fm);line-height:2" id="settings-stats"></div>
+      </div>
+    </div>
       <div class="imp-cards">
         <div class="ic">
           <div class="ic-hd">
@@ -642,6 +709,97 @@ let CFG={itemsId:'',catsId:'',metaId:'',gtoken:'',apiKey:''};
 let DB={items:[],categories:{}};
 let currentItem=null, currentFilter=null, bulkItems=[], bulkChanges={};
 
+// ══ SHARE TARGET HANDLER ═══════════════════════════════════════
+// Called after app loads — check if we received a shared URL
+let sharedItemUrl = '';
+let sharedItemCat = '';
+
+function checkForSharedContent(){
+  const url = sessionStorage.getItem('shared_url') || '';
+  const title = sessionStorage.getItem('shared_title') || '';
+  if(!url) return;
+  sessionStorage.removeItem('shared_url');
+  sessionStorage.removeItem('shared_title');
+  sharedItemUrl = url;
+  openShareSheet(url, title);
+}
+
+function openShareSheet(url, title){
+  // Show preview
+  document.getElementById('share-preview').textContent = title || url;
+  document.getElementById('share-note').value = '';
+  sharedItemCat = '';
+
+  // Build category grid
+  const allCats = [...new Set([...TOP_CATS, ...Object.keys(DB.categories)])];
+  document.getElementById('share-cat-grid').innerHTML = allCats.map(c=>
+    `<button onclick="shareSelectCat(this,'${esc(c)}')"
+      style="padding:14px 10px;border-radius:10px;border:1px solid var(--border2);
+             background:var(--surface);color:var(--text2);
+             font-family:var(--fb);font-size:13px;cursor:pointer;
+             text-align:center;transition:all .12s">
+      ${esc(c)}
+    </button>`
+  ).join('');
+
+  document.getElementById('share-overlay').classList.add('open');
+  document.getElementById('share-sheet').classList.add('open');
+  // Also go to library tab so user sees their library after saving
+  goTab('library', document.querySelector('.nb'));
+}
+
+function shareSelectCat(btn, cat){
+  sharedItemCat = cat;
+  document.querySelectorAll('#share-cat-grid button').forEach(b=>{
+    const sel = b === btn;
+    b.style.background = sel ? 'var(--gold)' : 'var(--surface)';
+    b.style.borderColor = sel ? 'var(--gold)' : 'var(--border2)';
+    b.style.color = sel ? '#0d0d0d' : 'var(--text2)';
+    b.style.fontWeight = sel ? '600' : '400';
+  });
+}
+
+async function saveShared(){
+  if(!sharedItemUrl){ closeShareSheet(); return; }
+  const note = document.getElementById('share-note').value.trim();
+  const isTweet = sharedItemUrl.includes('twitter.com')||sharedItemUrl.includes('x.com');
+  const item = {
+    id: uid(),
+    url: sharedItemUrl,
+    title: sharedItemUrl, // URL as title initially — will be updated when tweet is read
+    source: isTweet ? 'twitter' : 'manual',
+    author: '',
+    date: today(),
+    snapshot: '',
+    category: sharedItemCat || '',
+    subcategory: '',
+    tickers: [],
+    flagged: false,
+    note: note
+  };
+  // Try to extract author from Twitter URL
+  // e.g. https://twitter.com/ManasArora/status/123 → @ManasArora
+  const authorMatch = sharedItemUrl.match(/twitter\.com\/([^/]+)\/status|x\.com\/([^/]+)\/status/);
+  if(authorMatch) item.author = authorMatch[1] || authorMatch[2] || '';
+  if(item.author) item.title = `@${item.author}: ${note||'saved tweet'}`;
+
+  // If no category picked, run keyword guesser on URL+note
+  if(!item.category) guessCategory(item);
+
+  DB.items = [item, ...DB.items];
+  rebuildCats();
+  await saveDrive();
+  renderAll();
+  closeShareSheet();
+  toast(`Saved! ${item.category ? '→ '+item.category : 'Tap to categorise'}`);
+  sharedItemUrl = '';
+}
+
+function closeShareSheet(){
+  document.getElementById('share-overlay').classList.remove('open');
+  document.getElementById('share-sheet').classList.remove('open');
+}
+
 // ══ TOKEN UPDATE MODAL ════════════════════════════════════════
 function openTokenModal(){
   document.getElementById('token-overlay').classList.add('open');
@@ -675,9 +833,24 @@ function doAuth(){
 }
 window.addEventListener('load',()=>{
   const s=lg('cv_cfg'); if(s){CFG=s;loadAndEnter();} else showScreen('auth');
+  // ── Handle incoming share from Twitter/X ──────────────────
+  // When user shares a tweet to ContentVault via Android share sheet,
+  // the URL lands as ?url=... or ?text=... query param
+  const params = new URLSearchParams(window.location.search);
+  const sharedUrl = params.get('url') || params.get('text') || '';
+  const sharedTitle = params.get('title') || '';
+  if(sharedUrl){
+    // Store it — will be shown once app loads
+    sessionStorage.setItem('shared_url', sharedUrl);
+    sessionStorage.setItem('shared_title', sharedTitle);
+  }
 });
 async function loadAndEnter(){
-  showScreen('app'); await loadDrive(); renderAll();
+  showScreen('app');
+  await loadDrive();
+  renderAll();
+  // Check if app was opened via share — show the save sheet
+  setTimeout(checkForSharedContent, 500);
 }
 
 // ══ SCREENS / TABS ═════════════════════════════════════════
@@ -692,6 +865,47 @@ function goTab(name,btn){
   btn.classList.add('active');
   if(name==='categories')renderCats();
   if(name==='authors')renderAuthors();
+  if(name==='settings')populateSettings();
+}
+
+function populateSettings(){
+  document.getElementById('settings-token').value='';
+  document.getElementById('settings-items-id').value=CFG.itemsId||'';
+  document.getElementById('settings-cats-id').value=CFG.catsId||'';
+  document.getElementById('settings-meta-id').value=CFG.metaId||'';
+  const cats=new Set(DB.items.map(i=>i.category).filter(Boolean));
+  document.getElementById('settings-stats').innerHTML=
+    `Total items: ${DB.items.length}<br>`+
+    `Categories: ${cats.size}<br>`+
+    `Authors: ${new Set(DB.items.map(i=>i.author).filter(Boolean)).size}<br>`+
+    `Flagged: ${DB.items.filter(i=>i.flagged).length}<br>`+
+    `Uncategorised: ${DB.items.filter(i=>!i.category||i.category==='Other').length}`;
+}
+
+async function applySettingsToken(){
+  const token=document.getElementById('settings-token').value.trim();
+  if(!token||!token.startsWith('ya29')){toast('Paste a valid token starting with ya29...');return;}
+  CFG.gtoken=token; ls('cv_cfg',CFG);
+  toast('Token updated — syncing…');
+  await loadDrive(); renderAll();
+}
+
+function applySettingsIds(){
+  CFG.itemsId=document.getElementById('settings-items-id').value.trim();
+  CFG.catsId=document.getElementById('settings-cats-id').value.trim();
+  CFG.metaId=document.getElementById('settings-meta-id').value.trim();
+  ls('cv_cfg',CFG);
+  toast('File IDs saved — tap sync to reload');
+}
+
+async function clearAllData(){
+  if(!confirm('This will delete ALL your ContentVault data locally and from Drive. Are you sure?')) return;
+  DB.items=[]; DB.categories={};
+  ls('cv_items',[]);
+  await saveDrive();
+  renderAll();
+  toast('All data cleared ✓');
+  populateSettings();
 }
 
 // ══ DRIVE ══════════════════════════════════════════════════
