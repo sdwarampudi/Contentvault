@@ -915,16 +915,20 @@ function clearAuthor(){
 function doSearch(){
   const q=v('si').trim(); if(!q)return;
   const lq=q.toLowerCase();
-  const results=DB.items.filter(i=>
-    (i.title||'').toLowerCase().includes(lq)||
-    (i.author||'').toLowerCase().includes(lq)||
-    (i.category||'').toLowerCase().includes(lq)||
-    (i.subcategory||'').toLowerCase().includes(lq)||
-    (i.snapshot||'').toLowerCase().includes(lq)||
-    (i.note||'').toLowerCase().includes(lq)||
-    (i.url||'').toLowerCase().includes(lq)||
-    (i.tickers||[]).some(t=>t.toLowerCase().includes(lq))
-  );
+  const results=DB.items.filter(i=>{
+    // Never match inside raw URLs — too noisy
+    // Match only meaningful fields
+    if((i.title||'').toLowerCase().includes(lq)) return true;
+    if((i.author||'').toLowerCase().includes(lq)) return true;
+    if((i.authorName||'').toLowerCase().includes(lq)) return true;
+    if((i.category||'').toLowerCase().includes(lq)) return true;
+    if((i.subcategory||'').toLowerCase().includes(lq)) return true;
+    if((i.note||'').toLowerCase().includes(lq)) return true;
+    if((i.tickers||[]).some(t=>t.toLowerCase().includes(lq))) return true;
+    // Snapshot (full tweet text) — match but only if query is 3+ chars to avoid noise
+    if(lq.length>=3 && (i.snapshot||'').toLowerCase().includes(lq)) return true;
+    return false;
+  });
   showResBar(`"${q}" — ${results.length} result${results.length!==1?'s':''}`);
   renderItems(results);
 }
@@ -937,7 +941,10 @@ async function handleFile(type,input){
   showProg(type,20,`Parsed ${raw.length} items…`);
   const newItems=raw.filter(r=>!DB.items.some(e=>e.url&&e.url===r.url));
   if(!newItems.length){toast('No new items (all already saved)');showProg(type,100,'Already saved');return;}
-  newItems.forEach(item=>guessCategory(item));
+  // Only guess category if item doesn't already have one from the JSON
+  newItems.forEach(item=>{
+    if(!item.category||item.category==='') guessCategory(item);
+  });
   DB.items=[...newItems,...DB.items];
   rebuildCats(); showProg(type,80,'Saving to Drive…');
   await saveDrive(); showProg(type,100,`✓ ${newItems.length} items added`);
@@ -948,7 +955,7 @@ async function handlePaste(){
   const text=v('paste-inp').trim(); if(!text)return;
   const raw=parseText(text);
   const newItems=raw.filter(r=>!DB.items.some(e=>e.url&&e.url===r.url));
-  newItems.forEach(guessCategory);
+  newItems.forEach(item=>{if(!item.category) guessCategory(item);});
   DB.items=[...newItems,...DB.items]; rebuildCats();
   await saveDrive(); renderAll(); document.getElementById('paste-inp').value='';
   toast(`${newItems.length} items added!`);
@@ -964,13 +971,58 @@ function parseChrome(html){
 }
 function parseTwitter(text){
   // ── Twitter data archive format (bookmarks.js) ──────────────
-  // File starts with: window.YTD.bookmarks.part0 = [ ... ]
   if(text.includes('window.YTD.bookmarks') || text.includes('YTD.bookmarks')){
     return parseTwitterArchive(text);
   }
-  // ── JSON export from extension ───────────────────────────────
   try{
     const data=JSON.parse(text);
+
+    // ── Pre-processed ContentVault JSON (already has category/snapshot) ──
+    // This is the tweets_import.json I built — preserve everything as-is
+    if(Array.isArray(data) && data.length>0 && data[0].snapshot!==undefined && data[0].id){
+      return data.map(t=>({
+        id:t.id||uid(),
+        url:t.url||'',
+        title:t.title||t.snapshot?.slice(0,150)||t.url||'',
+        source:t.source||'twitter',
+        author:t.author||'',
+        authorName:t.authorName||'',
+        date:t.date||today(),
+        snapshot:t.snapshot||'',
+        category:t.category||'',
+        subcategory:t.subcategory||'',
+        tickers:t.tickers||[],
+        flagged:t.flagged||false,
+        note:t.note||''
+      }));
+    }
+
+    // ── twitter-web-exporter dexie format ──────────────────────
+    if(data.formatName==='dexie' && data.data?.data){
+      const tables = data.data.data;
+      const tweetsTable = tables.find(t=>t.tableName==='tweets');
+      if(tweetsTable && tweetsTable.rows?.length>0){
+        return tweetsTable.rows.map(row=>{
+          const legacy = row.legacy||{};
+          const user = row.core?.user_results?.result||{};
+          const screenName = user.core?.screen_name||'';
+          const tweetId = row.rest_id||legacy.id_str||'';
+          const fullText = legacy.full_text||legacy.text||'';
+          const url = tweetId&&screenName?`https://twitter.com/${screenName}/status/${tweetId}`:'';
+          let date = today();
+          try{ if(legacy.created_at) date=new Date(legacy.created_at).toISOString().split('T')[0]; }catch{}
+          return {
+            id:uid(), url, title:fullText.slice(0,150)||url,
+            source:'twitter', author:screenName,
+            authorName:user.legacy?.name||'',
+            date, snapshot:fullText.slice(0,500),
+            category:'', subcategory:'', tickers:[], flagged:false, note:''
+          };
+        }).filter(i=>i.title||i.url);
+      }
+    }
+
+    // ── Generic JSON export ────────────────────────────────────
     const arr=Array.isArray(data)?data:(data.bookmarks||data.data||[]);
     return arr.map(t=>({
       id:uid(),url:t.url||t.tweet_url||'',
@@ -979,7 +1031,8 @@ function parseTwitter(text){
       author:t.author||t.user||t.screen_name||t.username||'',
       date:t.created_at||t.date||today(),
       snapshot:t.text||t.full_text||'',
-      category:'',subcategory:'',tickers:[],flagged:false,note:''
+      category:t.category||'',subcategory:t.subcategory||'',
+      tickers:t.tickers||[],flagged:t.flagged||false,note:t.note||''
     })).filter(i=>i.title);
   }catch{return parseText(text).map(i=>({...i,source:'twitter'}));}
 }
